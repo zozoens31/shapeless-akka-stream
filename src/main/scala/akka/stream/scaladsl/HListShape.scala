@@ -2,8 +2,9 @@ package akka.stream.scaladsl
 
 import akka.stream.{Inlet, Outlet, Shape}
 import shapeless.PolyDefns.~>
-import shapeless.ops.hlist.Prepend
-import shapeless.{::, HList, HNil}
+import shapeless.ops.hlist.{Length, Prepend, Split}
+import shapeless.ops.nat.ToInt
+import shapeless.{::, HList, HNil, Nat, Witness}
 
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.immutable.Seq
@@ -12,7 +13,7 @@ import scala.language.higherKinds
 /**
   * Created by cyrille on 18/11/2016.
   */
-case class HListShape[-I <: HList, +O <: HList](ins: I @uncheckedVariance, outs: O @uncheckedVariance)(implicit I: AllAre[Inlet, I], O: AllAre[Outlet, O]) extends Shape{
+case class HListShape[-I <: HList, +O <: HList](ins: I @uncheckedVariance, outs: O @uncheckedVariance)(implicit I: AllAre[I, Inlet], O: AllAre[O, Outlet]) extends Shape{
   override def inlets: Seq[Inlet[_]] = I.toSeq(ins)
 
   override def outlets: Seq[Outlet[_]] = O.toSeq(outs)
@@ -31,27 +32,27 @@ object HListShape {
   }
 }
 
-trait AllAre[F[_], L <: HList] {
+trait AllAre[L <: HList, F[_]] {
   type Inside <: HList
   def toSeq(l: L): Seq[F[_]]
   def allApply(l: L)(f: F ~> F): L
   def fromSeq(s: Seq[F[_]]): L
 }
 
-object AllAre extends {
-  type Aux[F[_], L <: HList, I <: HList] = AllAre[F, L] {
+object AllAre extends AllAreLowerImplicits {
+  type Aux[L <: HList, F[_], I <: HList] = AllAre[L, F] {
   type Inside = I
   }
-  implicit def hnil[F[_]]: Aux[F, HNil, HNil] = new AllAre[F, HNil] {
+  implicit def hnil[F[_]]: Aux[HNil, F, HNil] = new AllAre[HNil, F] {
     override type Inside = HNil
     override def toSeq(l: HNil): Seq[F[_]] = Seq()
-    override def allApply(l: HNil)(f: F ~> F): HNil = HNil
+    override def allApply(l: HNil)(f: ~>[F, F]): HNil = l
     override def fromSeq(s: Seq[F[_]]): HNil = {
       require(s.isEmpty, s"too many elements in Seq [${s.mkString(", ")}]")
       HNil
     }
   }
-  implicit def hCons[F[_], H, T <: HList](implicit tail: AllAre[F, T]): Aux[F, F[H] :: T, H :: tail.Inside] = new AllAre[F, F[H] :: T] {
+  implicit def hCons[F[_], H, T <: HList](implicit tail: T AllAre F): Aux[F[H] :: T, F, H :: tail.Inside] = new AllAre[F[H] :: T, F] {
     override type Inside = H :: tail.Inside
     override def toSeq(l: F[H] :: T): Seq[F[_]] = l.head +: tail.toSeq(l.tail)
     override def allApply(l: F[H] :: T)(f: F ~> F): F[H] :: T = f(l.head) :: tail.allApply(l.tail)(f)
@@ -63,29 +64,32 @@ object AllAre extends {
   }
 }
 
-trait PrependAllAre[F[_], L0 <: HList, L1 <: HList] {
-  type Out <: HList
-  type InsideOut <: HList
-  implicit def allAre: AllAre.Aux[F, Out, InsideOut]
-}
+trait AllAreLowerImplicits { self: AllAre.type =>
+  implicit def prepend[F[_], L0 <: HList, L1 <: HList, L <: HList, I0 <: HList, I1 <: HList, N <: Nat](implicit
+                                                                                             L: Prepend.Aux[L0, L1, L],
+                                                                                             LS: Split.Aux[L, N, L0, L1],
+                                                                                             I: I0 Prepend I1,
+                                                                                             A0: AllAre.Aux[L0, F, I0],
+                                                                                             A1: AllAre.Aux[L1, F, I1],
+                                                                                             l: Length.Aux[L0, N],
+                                                                                             N: ToInt[N]): AllAre.Aux[L, F, I.Out] =
+    new AllAre[L, F] {
+      override type Inside = I.Out
 
-object PrependAllAre {
-  type Aux[F[_], L0 <: HList, L1 <: HList, O <: HList, IO <: HList] = PrependAllAre[F, L0, L1] {
-    type Out = O
-    type InsideOut = IO
-  }
-  implicit def hnil[F[_], L1 <: HList](implicit L1: AllAre[F, L1]): Aux[F, HNil, L1, L1, L1.Inside] = new PrependAllAre[F, HNil, L1] {
-    type Out = L1
-    type InsideOut = L1.Inside
+      override def toSeq(l: L): Seq[F[_]] = {
+        val (l0, l1) = LS(l)
+        A0.toSeq(l0) ++ A1.toSeq(l1)
+      }
 
-    override def allAre: AllAre[F, L1] = L1
-  }
+      override def allApply(l: L)(f: ~>[F, F]): L = {
+        val (l0, l1) = LS(l)
+        L(A0.allApply(l0)(f), A1.allApply(l1)(f))
+      }
 
-  implicit def hcons[F[_], H0, T0 <: HList, L1 <: HList](implicit L1: AllAre[F, L1], L0: AllAre[F, F[H0] :: T0], P: PrependAllAre[F, T0, L1]): Aux[F, F[H0] :: T0, L1, F[H0] :: P.Out, H0 :: P.InsideOut] =
-    new PrependAllAre[F, F[H0] :: T0, L1] {
-      type Out = F[H0] :: P.Out
-      type InsideOut = H0 :: P.InsideOut
-
-      override def allAre: AllAre[F, F[H0] :: P.Out] = AllAre.hCons[F, H0, P.Out](P.allAre)
+      override def fromSeq(s: Seq[F[_]]): L = {
+        val l0 = Nat.toInt[N]
+        L(A0.fromSeq(s.take(l0)), A1.fromSeq(s.drop(l0)))
+      }
     }
+
 }

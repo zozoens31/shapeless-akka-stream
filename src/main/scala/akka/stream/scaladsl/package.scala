@@ -1,7 +1,6 @@
 package akka.stream
 
-import akka.NotUsed
-import shapeless.{::, HNil, Succ, _0}
+import shapeless.{::, AllAre, HNil}
 
 /**
   * Created by cyrille on 19/11/2016.
@@ -20,5 +19,6 @@ package object scaladsl {
 
   implicit def hlist2flow[I, O, M](flow: Graph[HListShape[Inlet[I] :: HNil, Outlet[O] :: HNil], M]): Flow[I, O, M] =
     Flow.fromGraph(GraphDSL.create(flow){_ => f => FlowShape(f.ins.head, f.outs.head)})
+
 
 }

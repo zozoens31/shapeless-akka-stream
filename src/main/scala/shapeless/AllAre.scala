@@ -88,25 +88,25 @@ trait AllAreBuildable {
     }
 }
 
-trait BuildAllAre[N <: Nat, K, F[_]] {
+trait BuildUniform[N <: Nat, K, F[_]] {
   type Out <: HList
   def allAre: Out AllAre F
 }
 
-object BuildAllAre {
-  type Aux[N <: Nat, K, F[_], O <: HList] = BuildAllAre[N, K, F] {
+object BuildUniform {
+  type Aux[N <: Nat, K, F[_], O <: HList] = BuildUniform[N, K, F] {
     type Out = O
   }
 
-  implicit def zero[F[_], K]: Aux[_0, K, F, HNil] = new BuildAllAre[_0, K, F] {
+  implicit def zero[F[_], K]: Aux[_0, K, F, HNil] = new BuildUniform[_0, K, F] {
     type Out = HNil
     def allAre = AllAre.hnil[F]
   }
 
-  implicit def succ[N <: Nat, K, F[_]](implicit baa: BuildAllAre[N, K, F]): Aux[Succ[N], K, F, F[K] :: baa.Out] =
-    new BuildAllAre[Succ[N], K, F] {
-      type Out = F[K] :: baa.Out
-      def allAre = AllAre.hCons[F, K, baa.Out](baa.allAre)
+  implicit def succ[N <: Nat, K, F[_]](implicit U: BuildUniform[N, K, F]): Aux[Succ[N], K, F, F[K] :: U.Out] =
+    new BuildUniform[Succ[N], K, F] {
+      type Out = F[K] :: U.Out
+      def allAre = AllAre.hCons[F, K, U.Out](U.allAre)
     }
 }
 

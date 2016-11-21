@@ -3,9 +3,7 @@ package scaladsl
 
 import Implicits._
 import akka.actor.ActorSystem
-import shapeless.{::, HNil, MyPrepend, Nats, _0}
-
-import scala.util.Random
+import shapeless.{Nats, _0}
 
 /**
   * Created by cyrille on 20/11/2016.

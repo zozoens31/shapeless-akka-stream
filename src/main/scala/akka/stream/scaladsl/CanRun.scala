@@ -3,9 +3,12 @@ package scaladsl
 
 import shapeless.{HList, HNil}
 
+import scala.annotation.implicitNotFound
+
 /**
   * Created by cyrille on 20/11/2016.
   */
+@implicitNotFound("You cannot run a graph with nonEmpty inputs ${I} or outputs ${O}")
 trait CanRun[I <: HList, O <: HList] {
   def run[M](graph: HListGraph[I, O, M])(implicit materializer: Materializer): M
 }

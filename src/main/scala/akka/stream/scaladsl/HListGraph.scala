@@ -1,8 +1,6 @@
 package akka.stream
 package scaladsl
 
-import akka.actor.ActorSystem
-import akka.stream.scaladsl.GraphDSL.Builder
 import impl.StreamLayout.Module
 import shapeless.{AllAre, HList, HNil, MyPrepend, Nat}
 

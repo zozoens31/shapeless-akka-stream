@@ -3,10 +3,12 @@ package scaladsl
 
 import shapeless.{::, AllAre, HList, MyPrepend, Nat, Succ, _0}
 
+import scala.annotation.implicitNotFound
+
 /**
   * Created by cyrille on 20/11/2016.
   */
-
+@implicitNotFound("You cannot link the following shapes:\n  left input ${I0}\n  left output ${O0}\n  left output index ${On}\n  right input index ${In}\n  right input ${I1}\n  right output ${O1}")
 trait CanLink[O0 <: HList, On <: Nat, I1 <: HList, In <: Nat, I0 <: HList, O1 <: HList] {
   type NewIn <: HList
   type NewOut <: HList

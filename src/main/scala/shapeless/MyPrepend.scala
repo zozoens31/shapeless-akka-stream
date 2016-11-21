@@ -9,7 +9,7 @@ import shapeless.ops.nat.ToInt
 trait MyPrepend[A <: HList, B <: HList] {
   type Out <: HList
 
-  def unapply(out: Out): Some[(A, B)]
+  def unapply(out: Out): Option[(A, B)]
 
   def apply(a: A, b: B): Out
 
@@ -50,12 +50,12 @@ trait EvenLowerImplicits {
   implicit def hcons[H, T <: HList, B <: HList](implicit P: T MyPrepend B): MyPrepend.Aux[H :: T, B, H :: P.Out] = new MyPrepend[H :: T, B] {
     type Out = H :: P.Out
     val leftSize = P.leftSize + 1
+    val PP = P.asInstanceOf[MyPrepend.Aux[T, B, P.Out]]  //workaround for SI-9247 https://issues.scala-lang.org/browse/SI-9247
 
     override def apply(a: ::[H, T], b: B) = a.head :: P(a.tail, b)
 
-    override def unapply(out: H :: P.Out) = {
-      val (t, b) = P.unapply(out.tail).get
-      Some((out.head :: t, b))
+    override def unapply(out: H :: P.Out) = out match {
+      case h :: PP(t, b) => Some((h :: t, b))
     }
   }
 }

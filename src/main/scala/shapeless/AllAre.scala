@@ -71,15 +71,14 @@ trait AllAreBuildable {
                                               A1: AllAre[L1, F]): AllAre[L.Out, F] =
     new AllAre[L.Out, F] {
       type L = L.Out
+      val LL = L.asInstanceOf[MyPrepend.Aux[L0, L1, L]]    //workaround for SI-9247 https://issues.scala-lang.org/browse/SI-9247
 
-      override def toSeq(l: L): Seq[F[_]] = {
-        val (l0, l1) = L.unapply(l).get
-        A0.toSeq(l0) ++ A1.toSeq(l1)
+      override def toSeq(l: L): Seq[F[_]] = l match {
+        case LL(l0, l1) => A0.toSeq(l0) ++ A1.toSeq(l1)
       }
 
-      override def allApply(l: L)(f: ~>[F, F]): L = {
-        val (l0, l1) = L.unapply(l).get
-        L(A0.allApply(l0)(f), A1.allApply(l1)(f))
+      override def allApply(l: L)(f: ~>[F, F]): L = l match {
+        case LL(l0, l1) => LL(A0.allApply(l0)(f), A1.allApply(l1)(f))
       }
 
       override def fromSeq(s: Seq[F[_]]): L = {

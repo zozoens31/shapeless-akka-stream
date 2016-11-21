@@ -76,7 +76,25 @@ final class HListGraph[-I0 <: HList, +O0 <: HList, +M0](override val module: Mod
       HListGraph.fromGraph(that).toMat(self)(Keep.right)
   }
 
+  def toAllMat[I1 <: HList, M1, M2](that: Graph[HListShape[I1, HNil], M1])(combine: (M0, M1) => M2)(implicit noIn: I0@uncheckedVariance <:< HNil, can: CanLinkAll[O0@uncheckedVariance, I1]) =
+    HListGraph.fromGraph(GraphDSL.create(self, that)(combine){ implicit b => (left, right) =>
+      can.linkAll(left.outs, right.ins)
+      HListShape[HNil, HNil](HNil, HNil)
+    })
+
+  def toAll[I1 <: HList, M1](that: Graph[HListShape[I1, HNil], M1])(implicit noIn: I0@uncheckedVariance <:< HNil, can: CanLinkAll[O0@uncheckedVariance, I1]): HListGraph[HNil, HNil, M0] =
+    toAllMat(that)(Keep.left)
+
+  def loop[In <: Nat, On <: Nat](implicit link: CanLink[O0@uncheckedVariance, On, I0@uncheckedVariance, In, HNil, HNil]) =
+    HListGraph.fromGraph(GraphDSL.create(self){ implicit b => s =>
+    link(s.outs, s.ins)
+    HListShape(link.ins(HNil, s.ins), link.outs(s.outs, HNil))(link.allAreIn, link.allAreOut)
+
+  })
   def run()(implicit can: CanRun[I0@uncheckedVariance, O0@uncheckedVariance], mat: Materializer): M0 = can.run(this)
+
+  def runWith[I1 <: HList, M1](that: Graph[HListShape[I1, HNil], M1])(implicit noIn: I0@uncheckedVariance <:< HNil, can: CanLinkAll[O0@uncheckedVariance, I1], mat: Materializer): M1 =
+    toAllMat(that)(Keep.right).run()
 }
 
 object HListGraph {

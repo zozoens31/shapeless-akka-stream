@@ -1,7 +1,8 @@
 package akka.stream
 package scaladsl
 
-import shapeless.{::, AllAre, HList, MyPrepend, Nat, Succ, _0}
+import akka.stream.scaladsl.GraphDSL.Builder
+import shapeless.{::, AllAre, HList, HNil, MyPrepend, Nat, Succ, _0}
 
 import scala.annotation.implicitNotFound
 
@@ -98,3 +99,20 @@ object CanLink {
     }
 }
 
+trait CanLinkAll[O <: HList, I <: HList] {
+  def linkAll[M](outs: O, ins: I)(implicit b: GraphDSL.Builder[M]): Unit
+}
+
+object CanLinkAll {
+  implicit val hnil = new CanLinkAll[HNil, HNil] {
+    override def linkAll[M](outs: HNil, ins: HNil)(implicit b: Builder[M]) = ()
+  }
+
+  implicit def hcons[H0, H1 >: H0, O <: HList, I <: HList](implicit tail: O CanLinkAll I) = new CanLinkAll[Outlet[H0] :: O, Inlet[H1] :: I] {
+    override def linkAll[M](outs: ::[Outlet[H0], O], ins: ::[Inlet[H1], I])(implicit b: Builder[M]) = {
+      import GraphDSL.Implicits._
+      outs.head ~> ins.head
+      tail.linkAll(outs.tail, ins.tail)
+    }
+  }
+}

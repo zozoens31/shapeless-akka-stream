@@ -34,8 +34,7 @@ object MyPrepend extends LowerImplicit {
 }
 
 trait LowerImplicit extends EvenLowerImplicits {
-  self: MyPrepend.type =>
-  implicit def rightHnil[B <: HNil, A <: HList, N <: Nat](implicit N: Length.Aux[A, N], n: ToInt[N]): Aux[A, B, A] = new MyPrepend[A, B] {
+  implicit def rightHnil[B <: HNil, A <: HList, N <: Nat](implicit N: Length.Aux[A, N], n: ToInt[N]): MyPrepend.Aux[A, B, A] = new MyPrepend[A, B] {
     type Out = A
 
     override def unapply(out: A) = Some((out, HNil.asInstanceOf[B]))
@@ -47,9 +46,8 @@ trait LowerImplicit extends EvenLowerImplicits {
 }
 
 trait EvenLowerImplicits {
-  self: MyPrepend.type =>
 
-  def hcons[H, T <: HList, B <: HList](implicit P: T MyPrepend B): Aux[H :: T, B, H :: P.Out] = new MyPrepend[H :: T, B] {
+  implicit def hcons[H, T <: HList, B <: HList](implicit P: T MyPrepend B): MyPrepend.Aux[H :: T, B, H :: P.Out] = new MyPrepend[H :: T, B] {
     type Out = H :: P.Out
     val leftSize = P.leftSize + 1
 

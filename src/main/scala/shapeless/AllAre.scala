@@ -14,7 +14,7 @@ trait AllAre[L <: HList, F[_]] {
   def fromSeq(s: Seq[F[_]]): L
 }
 
-object AllAre extends AllAreBuildable {
+object AllAre extends AllAreBuildable with AllAreLowerImplicits {
   implicit def hnil[F[_]]: AllAre[HNil, F] = new AllAre[HNil, F] {
     override def toSeq(l: HNil): Seq[F[_]] = Seq()
 
@@ -26,17 +26,6 @@ object AllAre extends AllAreBuildable {
     }
   }
 
-  implicit def hCons[F[_], H, T <: HList](implicit tail: T AllAre F): AllAre[::[F[H], T], F] = new AllAre[F[H] :: T, F] {
-    override def toSeq(l: F[H] :: T): Seq[F[_]] = l.head +: tail.toSeq(l.tail)
-
-    override def allApply(l: F[H] :: T)(f: F ~> F): F[H] :: T = f(l.head) :: tail.allApply(l.tail)(f)
-
-    override def fromSeq(s: Seq[F[_]]): F[H] :: T = {
-      require(s.nonEmpty, s"not enough elements in Seq")
-      require(s.head.isInstanceOf[F[H]], s"invalid type of head element [${s.head}]")
-      s.head.asInstanceOf[F[H]] :: tail.fromSeq(s.tail)
-    }
-  }
   implicit def hConsO[H, T <: HList](implicit tail: T AllAre Outlet): AllAre[::[Outlet[H], T], Outlet] = new AllAre[Outlet[H] :: T, Outlet] {
     type F[X] = Outlet[X]
     override def toSeq(l: F[H] :: T): Seq[F[_]] = l.head +: tail.toSeq(l.tail)
@@ -46,7 +35,7 @@ object AllAre extends AllAreBuildable {
     override def fromSeq(s: Seq[F[_]]): F[H] :: T = {
       require(s.nonEmpty, s"not enough elements in Seq")
       require(s.head.isInstanceOf[F[H]], s"invalid type of head element [${s.head}]")
-      s.head.asInstanceOf[F[H]] :: tail.fromSeq(s.tail)
+      s.head.as[H] :: tail.fromSeq(s.tail)
     }
   }
   implicit def hConsI[H, T <: HList](implicit tail: T AllAre Inlet): AllAre[::[Inlet[H], T], Inlet] = new AllAre[Inlet[H] :: T, Inlet] {
@@ -58,9 +47,24 @@ object AllAre extends AllAreBuildable {
     override def fromSeq(s: Seq[F[_]]): F[H] :: T = {
       require(s.nonEmpty, s"not enough elements in Seq")
       require(s.head.isInstanceOf[F[H]], s"invalid type of head element [${s.head}]")
+      s.head.as[H] :: tail.fromSeq(s.tail)
+    }
+  }
+}
+
+trait AllAreLowerImplicits {
+  implicit def hCons[F[_], H, T <: HList](implicit tail: T AllAre F): AllAre[::[F[H], T], F] = new AllAre[F[H] :: T, F] {
+    override def toSeq(l: F[H] :: T): Seq[F[_]] = l.head +: tail.toSeq(l.tail)
+
+    override def allApply(l: F[H] :: T)(f: F ~> F): F[H] :: T = f(l.head) :: tail.allApply(l.tail)(f)
+
+    override def fromSeq(s: Seq[F[_]]): F[H] :: T = {
+      require(s.nonEmpty, s"not enough elements in Seq")
+      require(s.head.isInstanceOf[F[H]], s"invalid type of head element [${s.head}]")
       s.head.asInstanceOf[F[H]] :: tail.fromSeq(s.tail)
     }
   }
+
 }
 
 trait AllAreBuildable {

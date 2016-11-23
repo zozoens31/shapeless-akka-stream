@@ -33,7 +33,7 @@ object MyPrepend extends LowerImplicit {
 
 }
 
-trait LowerImplicit extends EvenLowerImplicits {
+trait LowerImplicit extends MyPrependLowestImplicits {
   implicit def rightHnil[B <: HNil, A <: HList, N <: Nat](implicit N: Length.Aux[A, N], n: ToInt[N]): MyPrepend.Aux[A, B, A] = new MyPrepend[A, B] {
     type Out = A
 
@@ -45,7 +45,7 @@ trait LowerImplicit extends EvenLowerImplicits {
   }
 }
 
-trait EvenLowerImplicits {
+trait MyPrependLowestImplicits {
 
   implicit def hcons[H, T <: HList, B <: HList](implicit P: T MyPrepend B): MyPrepend.Aux[H :: T, B, H :: P.Out] = new MyPrepend[H :: T, B] {
     type Out = H :: P.Out

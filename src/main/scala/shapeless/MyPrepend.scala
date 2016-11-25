@@ -47,15 +47,15 @@ trait LowerImplicit extends MyPrependLowestImplicits {
 
 trait MyPrependLowestImplicits {
 
-  implicit def hcons[H, T <: HList, B <: HList](implicit P: T MyPrepend B): MyPrepend.Aux[H :: T, B, H :: P.Out] = new MyPrepend[H :: T, B] {
-    type Out = H :: P.Out
-    val leftSize = P.leftSize + 1
-    val PP = P.asInstanceOf[MyPrepend.Aux[T, B, P.Out]]  //workaround for SI-9247 https://issues.scala-lang.org/browse/SI-9247
+  implicit def hcons[H, T <: HList, B <: HList](implicit tail: T MyPrepend B): MyPrepend.Aux[H :: T, B, H :: tail.Out] = new MyPrepend[H :: T, B] {
+    type Out = H :: tail.Out
+    val leftSize = tail.leftSize + 1
+    val Tail = tail.asInstanceOf[MyPrepend.Aux[T, B, tail.Out]]  //workaround for SI-9247 https://issues.scala-lang.org/browse/SI-9247
 
-    override def apply(a: ::[H, T], b: B) = a.head :: P(a.tail, b)
+    override def apply(a: ::[H, T], b: B) = a.head :: tail(a.tail, b)
 
-    override def unapply(out: H :: P.Out) = out match {
-      case h :: PP(t, b) => Some((h :: t, b))
+    override def unapply(out: H :: tail.Out) = out match {
+      case h :: Tail(t, b) => Some((h :: t, b))
     }
   }
 }

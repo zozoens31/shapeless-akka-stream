@@ -70,24 +70,24 @@ trait AllAreLowerImplicits {
 trait AllAreBuildable {
   self: AllAre.type =>
   def prepend[F[_], L0 <: HList, L1 <: HList](implicit
-                                              L: MyPrepend[L0, L1],
+                                              prepend: MyPrepend[L0, L1],
                                               A0: AllAre[L0, F],
-                                              A1: AllAre[L1, F]): AllAre[L.Out, F] =
-    new AllAre[L.Out, F] {
-      type L = L.Out
-      val LL = L.asInstanceOf[MyPrepend.Aux[L0, L1, L]]    //workaround for SI-9247 https://issues.scala-lang.org/browse/SI-9247
+                                              A1: AllAre[L1, F]): AllAre[prepend.Out, F] =
+    new AllAre[prepend.Out, F] {
+      type L = prepend.Out
+      val Prepend = prepend.asInstanceOf[MyPrepend.Aux[L0, L1, L]]    //workaround for SI-9247 https://issues.scala-lang.org/browse/SI-9247
 
       override def toSeq(l: L): Seq[F[_]] = l match {
-        case LL(l0, l1) => A0.toSeq(l0) ++ A1.toSeq(l1)
+        case Prepend(l0, l1) => A0.toSeq(l0) ++ A1.toSeq(l1)
       }
 
       override def allApply(l: L)(f: ~>[F, F]): L = l match {
-        case LL(l0, l1) => LL(A0.allApply(l0)(f), A1.allApply(l1)(f))
+        case Prepend(l0, l1) => Prepend(A0.allApply(l0)(f), A1.allApply(l1)(f))
       }
 
       override def fromSeq(s: Seq[F[_]]): L = {
-        val l0 = L.leftSize
-        L(A0.fromSeq(s.take(l0)), A1.fromSeq(s.drop(l0)))
+        val l0 = prepend.leftSize
+        prepend(A0.fromSeq(s.take(l0)), A1.fromSeq(s.drop(l0)))
       }
     }
 }
